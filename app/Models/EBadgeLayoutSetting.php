@@ -1,0 +1,34 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class EBadgeLayoutSetting extends Model
+{
+    protected $table = 'e_badge_layout_settings';
+
+    protected $fillable = [
+        'Category',
+        'field_name',
+        'static_text_key',
+        'static_text_value',
+        'margin_top',
+        'sequence',
+        'text_align',
+        'font_family',
+        'font_weight',
+        'color',
+        'font_size',
+        'width',
+        'height',
+    ];
+
+    protected $casts = [
+        'margin_top' => 'decimal:2',
+        'sequence' => 'integer',
+        'font_size' => 'decimal:2',
+        'width' => 'decimal:2',
+        'height' => 'decimal:2',
+    ];
+}
