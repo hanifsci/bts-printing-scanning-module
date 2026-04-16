@@ -107,6 +107,8 @@
             @php
                 $field = $layout->field_name;
                 $marginTopPx = ((float) ($layout->margin_top ?? 0)) * $mmToPx;
+                $marginLeftPx = ((float) ($layout->margin_left ?? 0)) * $mmToPx;
+                $marginRightPx = ((float) ($layout->margin_right ?? 0)) * $mmToPx;
                 $align = $layout->text_align ?? 'left';
                 $fontFamily = $layout->font_family ?? 'Helvetica';
                 $supportedFontFamilies = ['Helvetica', 'Times-Roman', 'Courier'];
@@ -138,7 +140,7 @@
                     $qrHeightPx = ((float) ($layout->height ?? 20)) * $mmToPx;
                 @endphp
                 @if($qrCode)
-                    <div class="item" style="margin-top: {{ $marginTopPx }}px; text-align: {{ $align }};">
+                    <div class="item" style="margin-top: {{ $marginTopPx }}px; margin-left: {{ $marginLeftPx }}px; margin-right: {{ $marginRightPx }}px; text-align: {{ $align }};">
                         <img
                             src="{{ $qrCode }}"
                             alt="QR"
@@ -152,6 +154,8 @@
                 <div class="item"
                      style="
                         margin-top: {{ $marginTopPx }}px;
+                        margin-left: {{ $marginLeftPx }}px;
+                        margin-right: {{ $marginRightPx }}px;
                         text-align: {{ $align }};
                         font-family: '{{ $fontFamily }}', sans-serif;
                         font-weight: {{ $fontWeight }};
@@ -161,15 +165,6 @@
                         @if($hasCustomWidth)
                         width: {{ $elementWidthPx }}px;
                         max-width: {{ $pageWidthPx }}px;
-                        @endif
-                        @if($align === 'center')
-                        margin-left: auto;
-                        margin-right: auto;
-                        @elseif($align === 'right')
-                        margin-left: auto;
-                        margin-right: 0;
-                        @else
-                        margin-right: auto;
                         @endif
                      ">
                     {{ $value }}

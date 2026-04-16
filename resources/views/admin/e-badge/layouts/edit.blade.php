@@ -173,6 +173,8 @@ if (layoutSettings.length > 0) {
         static_text_key: item.static_text_key || null,
         static_text_value: item.static_text_value || '',
         margin_top: parseFloat(item.margin_top || 0),
+        margin_left: parseFloat(item.margin_left || 0),
+        margin_right: parseFloat(item.margin_right || 0),
         sequence: parseInt(item.sequence || i, 10),
         text_align: item.text_align || 'left',
         font_family: normalizeFontFamily(item.font_family || 'Helvetica'),
@@ -188,6 +190,8 @@ if (layoutSettings.length > 0) {
         static_text_key: field.startsWith('Instruction') ? field : null,
         static_text_value: field.startsWith('Instruction') ? defaultPreviewText[field] : '',
         margin_top: i === 0 ? 0 : 2,
+        margin_left: 0,
+        margin_right: 0,
         sequence: i,
         text_align: 'left',
         font_family: 'Helvetica',
@@ -239,6 +243,8 @@ function toggleField(field, checked) {
                 static_text_key: field.startsWith('Instruction') ? field : null,
                 static_text_value: field.startsWith('Instruction') ? defaultPreviewText[field] : '',
                 margin_top: 2,
+                margin_left: 0,
+                margin_right: 0,
                 sequence: elements.length,
                 text_align: 'left',
                 font_family: 'Helvetica',
@@ -272,6 +278,8 @@ function renderPreview() {
     [...elements].sort((a, b) => a.sequence - b.sequence).forEach((el, idx) => {
         const div = document.createElement('div');
         div.style.marginTop = `${(el.margin_top || 0) * mmToPx}px`;
+        div.style.marginLeft = `${(el.margin_left || 0) * mmToPx}px`;
+        div.style.marginRight = `${(el.margin_right || 0) * mmToPx}px`;
         div.style.textAlign = el.text_align || 'left';
         div.style.color = el.color || '#000';
         div.style.fontFamily = previewFontMap[el.font_family] || (el.font_family || 'Helvetica, Arial, sans-serif');
@@ -286,15 +294,6 @@ function renderPreview() {
         div.style.padding = '0 1mm';
         div.style.overflowWrap = 'break-word';
         div.style.wordBreak = 'break-word';
-        if ((el.text_align || 'left') === 'center') {
-            div.style.marginLeft = 'auto';
-            div.style.marginRight = 'auto';
-        } else if ((el.text_align || 'left') === 'right') {
-            div.style.marginLeft = 'auto';
-            div.style.marginRight = '0';
-        } else {
-            div.style.marginRight = 'auto';
-        }
         div.style.fontSize = `${(el.font_size || 3.7) * mmToPx}px`;
         div.style.border = selectedIndex === idx ? '1px dashed #2563eb' : '1px dashed transparent';
         div.style.cursor = 'pointer';
@@ -372,6 +371,8 @@ function renderControls() {
             <div><label>Field</label><input class="form-control" disabled value="${el.field_name}"></div>
             <div><label>Sequence</label><input id="ctrl-seq" class="form-control" type="number" min="0" value="${el.sequence ?? 0}"></div>
             <div><label>Margin Top (mm)</label><input id="ctrl-margin" class="form-control" type="number" min="0" step="0.1" value="${el.margin_top ?? 0}"></div>
+            <div><label>Margin Left (mm)</label><input id="ctrl-margin-left" class="form-control" type="number" min="0" step="0.1" value="${el.margin_left ?? 0}"></div>
+            <div><label>Margin Right (mm)</label><input id="ctrl-margin-right" class="form-control" type="number" min="0" step="0.1" value="${el.margin_right ?? 0}"></div>
             <div><label>Align</label>
                 <select id="ctrl-align" class="form-control">
                     <option value="left" ${el.text_align === 'left' ? 'selected' : ''}>Left</option>
@@ -411,6 +412,8 @@ function renderControls() {
 
     bind('ctrl-seq', (v) => { el.sequence = parseInt(v || '0', 10); elements.sort((a,b)=>a.sequence-b.sequence); selectedIndex = elements.findIndex((x)=>x.field_name===el.field_name); }, 'input');
     bind('ctrl-margin', (v) => { el.margin_top = parseFloat(v || '0'); }, 'input');
+    bind('ctrl-margin-left', (v) => { el.margin_left = parseFloat(v || '0'); }, 'input');
+    bind('ctrl-margin-right', (v) => { el.margin_right = parseFloat(v || '0'); }, 'input');
     bind('ctrl-align', (v) => { el.text_align = v; }, 'change');
     bind('ctrl-family', (v) => { el.font_family = normalizeFontFamily(v); }, 'change');
     bind('ctrl-weight', (v) => { el.font_weight = v; }, 'change');
@@ -427,6 +430,8 @@ document.getElementById('layoutForm').addEventListener('submit', (e) => {
         static_text_key: el.field_name.startsWith('Instruction') ? el.field_name : null,
         static_text_value: el.field_name.startsWith('Instruction') ? (el.static_text_value || '') : null,
         margin_top: parseFloat(el.margin_top || 0),
+        margin_left: parseFloat(el.margin_left || 0),
+        margin_right: parseFloat(el.margin_right || 0),
         sequence: parseInt((el.sequence ?? idx), 10),
         text_align: el.text_align || 'left',
         font_family: normalizeFontFamily(el.font_family || 'Helvetica'),

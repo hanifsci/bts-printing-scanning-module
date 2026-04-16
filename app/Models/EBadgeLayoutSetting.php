@@ -14,6 +14,8 @@ class EBadgeLayoutSetting extends Model
         'static_text_key',
         'static_text_value',
         'margin_top',
+        'margin_left',
+        'margin_right',
         'sequence',
         'text_align',
         'font_family',
@@ -26,6 +28,8 @@ class EBadgeLayoutSetting extends Model
 
     protected $casts = [
         'margin_top' => 'decimal:2',
+        'margin_left' => 'decimal:2',
+        'margin_right' => 'decimal:2',
         'sequence' => 'integer',
         'font_size' => 'decimal:2',
         'width' => 'decimal:2',
