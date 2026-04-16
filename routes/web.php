@@ -119,6 +119,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::post('e-badges/send/user', [EBadgeSendController::class, 'sendUser'])->name('e-badge.send.user');
     Route::post('e-badges/send/whatsapp', [EBadgeSendController::class, 'sendWhatsapp'])->name('e-badge.send.whatsapp');
     Route::post('e-badges/send/bulk', [EBadgeSendController::class, 'sendBulk'])->name('e-badge.send.bulk');
+    Route::post('e-badges/send/bulk-whatsapp', [EBadgeSendController::class, 'sendBulkWhatsapp'])->name('e-badge.send.bulk-whatsapp');
 });
 
 // API Route for getting visible fields

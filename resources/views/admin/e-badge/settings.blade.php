@@ -43,7 +43,7 @@
                             {{ '{' }}{Name}}, {{ '{' }}{RegID}}, {{ '{' }}{Category}}, {{ '{' }}{Company}}, {{ '{' }}{Email}},
                             {{ '{' }}{Mobile}}, {{ '{' }}{Designation}}, {{ '{' }}{Country}}, {{ '{' }}{State}}, {{ '{' }}{City}},
                             {{ '{' }}{Additional1}}, {{ '{' }}{Additional2}}, {{ '{' }}{Additional3}}, {{ '{' }}{Additional4}}, {{ '{' }}{Additional5}},
-                            {{ '{' }}{EventLogoUrl}}, {{ '{' }}{EmailLogoUrl}}, {{ '{' }}{EmailLogoImage}}, {{ '{' }}{BadgeBackgroundUrl}}
+                            {{ '{' }}{EventLogoUrl}}, {{ '{' }}{EmailLogoUrl}}, {{ '{' }}{EmailLogoImage}}, {{ '{' }}{BadgeDownloadLink}}, {{ '{' }}{BadgeBackgroundUrl}}
                         </small>
                     </label>
                     <textarea

@@ -54,7 +54,8 @@
                 <input type="hidden" name="search" value="{{ $search }}">
 
                 <div style="margin-bottom:10px;">
-                    <button type="submit" class="btn btn-primary">Send E-Badge To Selected</button>
+                    <button type="submit" class="btn btn-primary">Send Email To Selected</button>
+                    <button type="submit" formaction="{{ route('admin.e-badge.send.bulk-whatsapp') }}" class="btn btn-secondary">Send WhatsApp To Selected</button>
                     @if(!empty($selectedCategory))
                         <small style="display:block;margin-top:6px;color:#6b7280;">If none selected, all filtered users of selected category will be processed.</small>
                     @endif
@@ -108,7 +109,7 @@
                                             class="btn btn-primary"
                                             style="padding:6px 10px;font-size:12px;"
                                         >
-                                            Send E-Badge
+                                            Send Email
                                         </button>
                                     </div>
                                 </td>

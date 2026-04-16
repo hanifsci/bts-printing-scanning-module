@@ -143,24 +143,29 @@ class EBadgeSendController extends Controller
     public function sendBulk(Request $request)
     {
         $validated = $request->validate([
-            'category' => 'required|string',
+            'category' => 'nullable|string',
             'search' => 'nullable|string',
             'selected_user_ids' => 'nullable|array',
             'selected_user_ids.*' => 'integer|exists:user_details,id',
         ]);
 
-        $query = UserDetail::where('Category', $validated['category']);
+        $query = UserDetail::query();
         if (!empty($validated['selected_user_ids'])) {
             $query->whereIn('id', $validated['selected_user_ids']);
-        } elseif (!empty($validated['search'])) {
-            $term = '%' . $validated['search'] . '%';
-            $query->where(function ($q) use ($term) {
-                $q->where('RegID', 'like', $term)
-                    ->orWhere('Name', 'like', $term)
-                    ->orWhere('Company', 'like', $term)
-                    ->orWhere('Email', 'like', $term)
-                    ->orWhere('Mobile', 'like', $term);
-            });
+        } elseif (!empty($validated['category'])) {
+            $query->where('Category', $validated['category']);
+            if (!empty($validated['search'])) {
+                $term = '%' . $validated['search'] . '%';
+                $query->where(function ($q) use ($term) {
+                    $q->where('RegID', 'like', $term)
+                        ->orWhere('Name', 'like', $term)
+                        ->orWhere('Company', 'like', $term)
+                        ->orWhere('Email', 'like', $term)
+                        ->orWhere('Mobile', 'like', $term);
+                });
+            }
+        } else {
+            return redirect()->back()->with('error', 'Please select users or choose a category first.');
         }
 
         $users = $query->get();
@@ -180,12 +185,82 @@ class EBadgeSendController extends Controller
         }
 
         return redirect()->route('admin.e-badge.send.index', [
-            'category' => $validated['category'],
+            'category' => $validated['category'] ?? null,
             'search' => $validated['search'] ?? null,
         ])->with(
             $failedCount === 0 ? 'success' : 'error',
-            'E-badge sending completed. Success: ' . $successCount . ', Failed: ' . $failedCount . '.'
+            'E-badge email sending completed. Success: ' . $successCount . ', Failed: ' . $failedCount . '.'
         );
+    }
+
+    public function sendBulkWhatsapp(Request $request)
+    {
+        $validated = $request->validate([
+            'category' => 'nullable|string',
+            'search' => 'nullable|string',
+            'selected_user_ids' => 'nullable|array',
+            'selected_user_ids.*' => 'integer|exists:user_details,id',
+        ]);
+
+        $query = UserDetail::query();
+        if (!empty($validated['selected_user_ids'])) {
+            $query->whereIn('id', $validated['selected_user_ids']);
+        } elseif (!empty($validated['category'])) {
+            $query->where('Category', $validated['category']);
+            if (!empty($validated['search'])) {
+                $term = '%' . $validated['search'] . '%';
+                $query->where(function ($q) use ($term) {
+                    $q->where('RegID', 'like', $term)
+                        ->orWhere('Name', 'like', $term)
+                        ->orWhere('Company', 'like', $term)
+                        ->orWhere('Email', 'like', $term)
+                        ->orWhere('Mobile', 'like', $term);
+                });
+            }
+        } else {
+            return redirect()->back()->with('error', 'Please select users or choose a category first.');
+        }
+
+        $users = $query->get();
+        if ($users->isEmpty()) {
+            return redirect()->back()->with('error', 'No users found for sending WhatsApp e-badges.');
+        }
+
+        $successCount = 0;
+        $failedCount = 0;
+        foreach ($users as $user) {
+            [$ok] = $this->sendWhatsappToUser($user);
+            if ($ok) {
+                $successCount++;
+            } else {
+                $failedCount++;
+            }
+        }
+
+        return redirect()->route('admin.e-badge.send.index', [
+            'category' => $validated['category'] ?? null,
+            'search' => $validated['search'] ?? null,
+        ])->with(
+            $failedCount === 0 ? 'success' : 'error',
+            'E-badge WhatsApp sending completed. Success: ' . $successCount . ', Failed: ' . $failedCount . '.'
+        );
+    }
+
+    /**
+     * @return array{content:string,filename:string,storage_path:string,url:string}
+     */
+    protected function buildStoredPdfPayload(UserDetail $user): array
+    {
+        $pdf = $this->pdfService->generateForUser($user);
+        $pdfStoragePath = 'e-badge-pdfs/' . ($user->RegID ?: $user->id) . '_' . now()->format('Ymd_His') . '.pdf';
+        Storage::disk('public')->put($pdfStoragePath, $pdf['content']);
+
+        return [
+            'content' => $pdf['content'],
+            'filename' => $pdf['filename'],
+            'storage_path' => $pdfStoragePath,
+            'url' => $this->publicStorageUrl($pdfStoragePath),
+        ];
     }
 
     /**
@@ -260,9 +335,9 @@ class EBadgeSendController extends Controller
         }
 
         try {
-            $pdf = $this->pdfService->generateForUser($user);
+            $pdfPayload = $this->buildStoredPdfPayload($user);
 
-            $replacements = $this->buildTemplateReplacements($user, $category);
+            $replacements = $this->buildTemplateReplacements($user, $category, $pdfPayload['url']);
             $subject = str_replace(array_keys($replacements), array_values($replacements), $setting->email_subject ?: 'Your E-Badge');
             $body = str_replace(array_keys($replacements), array_values($replacements), $setting->email_body ?: '<p>Please find your e-badge attached.</p>');
 
@@ -272,8 +347,8 @@ class EBadgeSendController extends Controller
                 $body,
                 $mailConfig,
                 [[
-                    'content' => $pdf['content'],
-                    'filename' => $pdf['filename'],
+                    'content' => $pdfPayload['content'],
+                    'filename' => $pdfPayload['filename'],
                     'mime' => 'application/pdf',
                 ]]
             );
@@ -319,10 +394,8 @@ class EBadgeSendController extends Controller
             return [false, 'Cannot send WhatsApp: background format unsupported for category ' . $category->Category . '. Please upload PNG.'];
         }
 
-        $pdf = $this->pdfService->generateForUser($user);
-        $pdfStoragePath = 'e-badge-pdfs/' . ($user->RegID ?: $user->id) . '_' . now()->format('Ymd_His') . '.pdf';
-        Storage::disk('public')->put($pdfStoragePath, $pdf['content']);
-        $pdfUrl = $this->publicStorageUrl($pdfStoragePath);
+        $pdfPayload = $this->buildStoredPdfPayload($user);
+        $pdfUrl = $pdfPayload['url'];
 
         [$countryCode, $phoneNumber] = $this->splitPhoneForInterakt($mobile);
         $tableValue = trim((string) ($user->Additional1 ?? ''));
@@ -365,7 +438,7 @@ class EBadgeSendController extends Controller
     /**
      * @return array<string,string>
      */
-    protected function buildTemplateReplacements(UserDetail $user, Category $category): array
+    protected function buildTemplateReplacements(UserDetail $user, Category $category, string $badgeDownloadLink = ''): array
     {
         $eventSettings = EventSetting::getSettings();
         $eventLogoUrl = $eventSettings->logo_path ? $this->publicStorageUrl($eventSettings->logo_path) : '';
@@ -393,7 +466,7 @@ class EBadgeSendController extends Controller
             '{{EventLogoUrl}}' => $eventLogoUrl,
             '{{EmailLogoUrl}}' => $emailLogoUrl,
             '{{EmailLogoImage}}' => $emailLogoImage,
-            '{{BadgeDownloadLink}}' => '',
+            '{{BadgeDownloadLink}}' => $badgeDownloadLink,
             '{{BadgeBackgroundUrl}}' => $category->e_badge_background_path ? $this->publicStorageUrl($category->e_badge_background_path) : '',
         ];
     }
