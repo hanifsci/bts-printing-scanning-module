@@ -46,7 +46,7 @@ class EBadgeSendController extends Controller
             });
         }
 
-        $users = $query->orderBy('Name')->paginate(50)->withQueryString();
+        $users = $query->orderBy('RegID')->paginate(50)->withQueryString();
         $recentLogs = EBadgeMailLog::orderByDesc('id')->limit(20)->get();
         $setting = EBadgeSetting::getDefault();
 

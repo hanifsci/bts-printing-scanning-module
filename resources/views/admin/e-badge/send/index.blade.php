@@ -124,8 +124,22 @@
                 </div>
             </form>
 
-            <div style="margin-top:12px;">
-                {{ $users->links() }}
+            <div style="margin-top:20px; display:flex; flex-direction:column; align-items:flex-end;">
+                {{-- CDP Pagination --}}
+                <div class="cdp" actpage="{{ $users->currentPage() }}">
+                    {{-- Prev button (child 1) --}}
+                    <a href="{{ $users->onFirstPage() ? '#' : $users->previousPageUrl() }}" class="cdp_i">prev</a>
+                    {{-- Page number links (child 2 … lastPage+1) --}}
+                    @foreach ($users->getUrlRange(1, $users->lastPage()) as $page => $url)
+                        <a href="{{ $url }}" class="cdp_i">{{ $page }}</a>
+                    @endforeach
+                    {{-- Next button (last child) --}}
+                    <a href="{{ $users->hasMorePages() ? $users->nextPageUrl() : '#' }}" class="cdp_i">next</a>
+                </div>
+                {{-- Pagination Info --}}
+                <div style="font-size:12px; color:#6b7280; margin-top:4px;">
+                    Showing <strong>{{ $users->firstItem() }}</strong> to <strong>{{ $users->lastItem() }}</strong> of <strong>{{ $users->total() }}</strong> users
+                </div>
             </div>
         </div>
     </div>
@@ -169,6 +183,123 @@
     </div>
 </div>
 @endsection
+
+@push('styles')
+<style>
+    @keyframes cdp-in {
+        from { transform: scale(1.5); opacity: 0; }
+        to   { transform: scale(1);   opacity: 1; }
+    }
+
+    .cdp {
+        position: relative;
+        text-align: right;
+        padding: 8px 0;
+        font-size: 0;
+        z-index: 6;
+        animation: cdp-in 400ms ease both;
+    }
+
+    .cdp_i {
+        font-size: 13px;
+        font-family: 'Comfortaa', sans-serif;
+        font-weight: 700;
+        letter-spacing: .03em;
+        text-decoration: none;
+        text-transform: uppercase;
+        text-align: center;
+        transition: background 250ms, color 250ms, box-shadow 200ms, transform 150ms;
+        display: none;
+        margin: 0 3px 6px;
+        height: 36px;
+        min-width: 36px;
+        border-radius: 36px;
+        border: 2px solid #3b82f6;
+        line-height: 32px;
+        padding: 0;
+        color: #3b82f6;
+    }
+
+    .cdp_i:first-child,
+    .cdp_i:last-child {
+        padding: 0 16px;
+        margin: 0 6px 6px;
+    }
+
+    /* Always show first page, last page, and next button */
+    .cdp_i:last-child,
+    .cdp_i:nth-child(2),
+    .cdp_i:nth-last-child(2) {
+        display: inline-block;
+    }
+
+    .cdp_i:hover {
+        background-color: #2563eb;
+        border-color: #2563eb;
+        color: #fff;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+    }
+
+    /* Show prev button only when not on first page */
+    .cdp:not([actpage="1"]) .cdp_i:nth-child(1) {
+        display: inline-block;
+    }
+
+    /* ── Per-page rules (actpage 1–80) ─────────────────────────── */
+    @for ($i = 1; $i <= 80; $i++)
+    /* actpage={{ $i }} */
+    .cdp[actpage="{{ $i }}"] .cdp_i:nth-child({{ $i - 2 }}):not(:first-child):not(:nth-child(2)) {
+        display: inline-block;
+        pointer-events: none;
+        color: transparent;
+        border-color: transparent;
+        width: 50px;
+    }
+    .cdp[actpage="{{ $i }}"] .cdp_i:nth-child({{ $i - 2 }}):not(:first-child):not(:nth-child(2))::after {
+        content: '...';
+        color: #3b82f6;
+        font-size: 22px;
+        margin-left: -6px;
+    }
+    .cdp[actpage="{{ $i }}"] .cdp_i:nth-child({{ $i - 1 }}):not(:first-child) {
+        display: inline-block;
+    }
+    .cdp[actpage="{{ $i }}"] .cdp_i:nth-child({{ $i }}):not(:first-child) {
+        display: inline-block;
+    }
+    .cdp[actpage="{{ $i }}"] .cdp_i:nth-child({{ $i + 1 }}) {
+        background-color: #3b82f6;
+        border-color: #3b82f6;
+        color: #fff;
+        display: inline-block;
+        box-shadow: 0 4px 10px rgba(59, 130, 246, 0.35);
+    }
+    .cdp[actpage="{{ $i }}"] .cdp_i:nth-child({{ $i + 1 }}) + .cdp_i:last-child {
+        display: none !important;
+    }
+    .cdp[actpage="{{ $i }}"] .cdp_i:nth-child({{ $i + 2 }}):not(:last-child) {
+        display: inline-block;
+    }
+    .cdp[actpage="{{ $i }}"] .cdp_i:nth-child({{ $i + 3 }}):not(:last-child) {
+        display: inline-block;
+    }
+    .cdp[actpage="{{ $i }}"] .cdp_i:nth-child({{ $i + 4 }}):not(:last-child):not(:nth-last-child(2)) {
+        display: inline-block;
+        pointer-events: none;
+        color: transparent;
+        border-color: transparent;
+        width: 50px;
+    }
+    .cdp[actpage="{{ $i }}"] .cdp_i:nth-child({{ $i + 4 }}):not(:last-child):not(:nth-last-child(2))::after {
+        content: '...';
+        color: #3b82f6;
+        font-size: 22px;
+        margin-left: -6px;
+    }
+    @endfor
+</style>
+@endpush
 
 @push('scripts')
 <script>
