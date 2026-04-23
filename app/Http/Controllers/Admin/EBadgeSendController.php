@@ -15,6 +15,7 @@ use App\Services\EBadgePdfService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class EBadgeSendController extends Controller
 {
@@ -31,7 +32,7 @@ class EBadgeSendController extends Controller
         $search = trim((string) $request->query('search', ''));
         $selectedBadgeSize = null;
 
-        $query = UserDetail::query();
+       $query = UserDetail::query()->orderBy('RegID');
         if ($selectedCategory) {
             $query->where('Category', $selectedCategory);
         }
@@ -140,7 +141,7 @@ class EBadgeSendController extends Controller
         ]);
     }
 
-    public function sendBulk(Request $request)
+    public function sendBulk2(Request $request)
     {
         $validated = $request->validate([
             'category' => 'nullable|string',
@@ -193,7 +194,86 @@ class EBadgeSendController extends Controller
         );
     }
 
-    public function sendBulkWhatsapp(Request $request)
+
+public function sendBulk(Request $request)
+{
+    $validated = $request->validate([
+        'category' => 'nullable|string',
+        'search' => 'nullable|string',
+        'selected_user_ids' => 'nullable|array',
+        'selected_user_ids.*' => 'integer|exists:user_details,id',
+    ]);
+
+    $query = UserDetail::query();
+
+    if (!empty($validated['selected_user_ids'])) {
+        $query->whereIn('id', $validated['selected_user_ids']);
+    } elseif (!empty($validated['category'])) {
+        $query->where('Category', $validated['category']);
+
+        if (!empty($validated['search'])) {
+            $term = '%' . $validated['search'] . '%';
+            $query->where(function ($q) use ($term) {
+                $q->where('RegID', 'like', $term)
+                    ->orWhere('Name', 'like', $term)
+                    ->orWhere('Company', 'like', $term)
+                    ->orWhere('Email', 'like', $term)
+                    ->orWhere('Mobile', 'like', $term);
+            });
+        }
+    } else {
+        return back()->with('error', 'Please select users or choose a category first.');
+    }
+
+    // ✅ Skip already processed users
+    $query->where('email_badge', 0);
+
+    $successCount = 0;
+    $failedCount = 0;
+
+    // ✅ Process in chunks (VERY IMPORTANT)
+    $query->chunk(100, function ($users) use (&$successCount, &$failedCount) {
+
+        $successIds = [];
+        $failedIds = [];
+
+        foreach ($users as $user) {
+            [$ok] = $this->sendBadgeToUser($user);
+
+            if ($ok) {
+                $successCount++;
+                $successIds[] = $user->id;
+            } else {
+                $failedCount++;
+                $failedIds[] = $user->id;
+            }
+        }
+
+        // ✅ Bulk update success
+        if (!empty($successIds)) {
+            UserDetail::whereIn('id', $successIds)->update([
+                'email_badge' => 1,
+                'email_badge_sent_at' => now(),
+            ]);
+        }
+
+        // ✅ Bulk update failed
+        if (!empty($failedIds)) {
+            UserDetail::whereIn('id', $failedIds)->update([
+                'email_badge' => 2,
+            ]);
+        }
+    });
+
+    return redirect()->route('admin.e-badge.send.index', [
+        'category' => $validated['category'] ?? null,
+        'search' => $validated['search'] ?? null,
+    ])->with(
+        $failedCount === 0 ? 'success' : 'error',
+        "E-badge sending done. Success: {$successCount}, Failed: {$failedCount}"
+    );
+}
+    public function sendBulkWhatsapp2(Request $request)
     {
         $validated = $request->validate([
             'category' => 'nullable|string',
@@ -246,6 +326,84 @@ class EBadgeSendController extends Controller
         );
     }
 
+public function sendBulkWhatsapp(Request $request)
+{
+    $validated = $request->validate([
+        'category' => 'nullable|string',
+        'search' => 'nullable|string',
+        'selected_user_ids' => 'nullable|array',
+        'selected_user_ids.*' => 'integer|exists:user_details,id',
+    ]);
+
+    $query = UserDetail::query();
+
+    if (!empty($validated['selected_user_ids'])) {
+        $query->whereIn('id', $validated['selected_user_ids']);
+    } elseif (!empty($validated['category'])) {
+        $query->where('Category', $validated['category']);
+
+        if (!empty($validated['search'])) {
+            $term = '%' . $validated['search'] . '%';
+            $query->where(function ($q) use ($term) {
+                $q->where('RegID', 'like', $term)
+                    ->orWhere('Name', 'like', $term)
+                    ->orWhere('Company', 'like', $term)
+                    ->orWhere('Email', 'like', $term)
+                    ->orWhere('Mobile', 'like', $term);
+            });
+        }
+    } else {
+        return back()->with('error', 'Please select users or choose a category first.');
+    }
+
+    // ✅ Skip already sent
+    $query->where('whatsapp_badge', 0);
+
+    $successCount = 0;
+    $failedCount = 0;
+
+    // ✅ Chunk processing (critical for performance)
+    $query->chunk(100, function ($users) use (&$successCount, &$failedCount) {
+
+        $successIds = [];
+        $failedIds = [];
+
+        foreach ($users as $user) {
+            [$ok] = $this->sendWhatsappToUser($user);
+
+            if ($ok) {
+                $successCount++;
+                $successIds[] = $user->id;
+            } else {
+                $failedCount++;
+                $failedIds[] = $user->id;
+            }
+        }
+
+        // ✅ Bulk update success
+        if (!empty($successIds)) {
+            UserDetail::whereIn('id', $successIds)->update([
+                'whatsapp_badge' => 1,
+                'whatsapp_badge_sent_at' => now(),
+            ]);
+        }
+
+        // ✅ Bulk update failed
+        if (!empty($failedIds)) {
+            UserDetail::whereIn('id', $failedIds)->update([
+                'whatsapp_badge' => 2,
+            ]);
+        }
+    });
+
+    return redirect()->route('admin.e-badge.send.index', [
+        'category' => $validated['category'] ?? null,
+        'search' => $validated['search'] ?? null,
+    ])->with(
+        $failedCount === 0 ? 'success' : 'error',
+        "WhatsApp e-badge sending done. Success: {$successCount}, Failed: {$failedCount}"
+    );
+}
     /**
      * @return array{content:string,filename:string,storage_path:string,url:string}
      */
@@ -398,7 +556,7 @@ class EBadgeSendController extends Controller
         $pdfUrl = $pdfPayload['url'];
 
         [$countryCode, $phoneNumber] = $this->splitPhoneForInterakt($mobile);
-        $tableValue = trim((string) ($user->Additional1 ?? ''));
+        $tableValue = trim((string) ($user->Additional3 ?? ''));
         $tableValue = $tableValue !== '' ? $tableValue : 'N/A';
 
         $payload = [
@@ -431,6 +589,11 @@ class EBadgeSendController extends Controller
         if (!$response->successful()) {
             return [false, 'WhatsApp send failed for ' . $user->RegID . ': ' . $response->status() . ' ' . $response->body()];
         }
+        
+       Log::info('WhatsApp message sent successfully.', [
+            'mobile' => $mobile,
+        ]);
+        
 
         return [true, 'WhatsApp message sent successfully to ' . $mobile . '.'];
     }

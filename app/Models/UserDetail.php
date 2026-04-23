@@ -29,6 +29,10 @@ class UserDetail extends Model
         'IsLunchAllowed',
         'Data_Received_At',
         'Badge_Printed_At',
+         'email_badge',
+    'whatsapp_badge',
+    'email_badge_sent_at',
+    'whatsapp_badge_sent_at',
     ];
 
     protected $casts = [
